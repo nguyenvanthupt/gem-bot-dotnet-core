@@ -31,6 +31,11 @@ namespace bot {
 
             return null;
         }
+        public Hero highgestAttackEnemyHero()
+        {
+            return heroes.OrderByDescending(x => x.getHeroAttack()).First();
+        }
+
 
         public HashSet<GemType> getRecommendGemType() {
             heroGemType.Clear();
@@ -43,6 +48,11 @@ namespace bot {
             }
 
             return heroGemType;
+        }
+
+        public Hero GetHeroByID(HeroIdEnum id)
+        {
+            return heroes.Where(hero => hero.id == id).FirstOrDefault();
         }
     }
 }

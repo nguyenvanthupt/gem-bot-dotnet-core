@@ -47,5 +47,22 @@ namespace bot
         public bool isHeroSelfSkill() {
             return HeroIdEnum.SEA_SPIRIT == id;
         }
+        public bool IsAthorBuffSkill()
+        {
+            return HeroIdEnum.MONK == id;
+        }
+
+        public int getHeroAttack()
+        {
+            return attack;
+        }
+        public int getHeroMana(Hero hero)
+        {
+            return hero.mana;
+        }
+        public int getHeroHP()
+        {
+            return hp;
+        }
     }
 }

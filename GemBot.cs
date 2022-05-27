@@ -109,21 +109,92 @@ namespace bot
             {
                 return;
             }
+            FirstHerostrategy();
 
+
+        }
+        public void FirstHerostrategy()
+        {
+            var supportHero = botPlayer.GetHeroByID(HeroIdEnum.MONK);
+            var subDamgerHero = botPlayer.GetHeroByID(HeroIdEnum.FIRE_SPIRIT);
+            var mainDamgeHero = botPlayer.GetHeroByID(HeroIdEnum.CERBERUS);
             Hero heroFullMana = botPlayer.anyHeroFullMana();
             if (heroFullMana != null)
             {
-                TaskSchedule(delaySwapGem, _ => SendCastSkill(heroFullMana));
-                return;
+                Console.WriteLine(heroFullMana.name + "hero full Mana");
+                var alreadyCastSkill = DoHeroCastSkillByOrder(mainDamgeHero, subDamgerHero, supportHero);
+                if (alreadyCastSkill)
+                {
+                    return;
+                }
             }
             TaskSchedule(delaySwapGem, _ => SendSwapGem());
+        }
+
+        public bool DoHeroCastSkillByOrder(Hero mainAttackHero, Hero subAttackHero, Hero supportHero)
+        {
+            List<GemSwapInfo> listMatchGem = grid.suggestMatch();
+
+            GemSwapInfo matchSupportGem = listMatchGem
+               .Where(gemMatch => gemMatch.type == GemType.YELLOW || gemMatch.type == GemType.GREEN)
+               .FirstOrDefault();
+
+            if (supportHero.isAlive() && supportHero.isFullMana())
+            {
+                TaskSchedule(delaySwapGem, _ => SendCastSkill(supportHero));
+                return true;
+            }
+            else if (!supportHero.isAlive())
+            {
+                if (mainAttackHero.isAlive() && mainAttackHero.isFullMana())
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
+                }
+                else if (subAttackHero.isAlive() && subAttackHero.isFullMana())
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                }
+            }
+            else
+            {
+                if (mainAttackHero.isAlive()
+                    && mainAttackHero.isFullMana()
+                    && mainAttackHero.getHeroAttack() > 8)
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(mainAttackHero));
+                    return true;
+                }
+                else if (subAttackHero.isAlive() && subAttackHero.isFullMana()
+                && subAttackHero.getHeroAttack() > 8)
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                    return true;
+                }
+                else if (mainAttackHero.isAlive()
+                    && mainAttackHero.isFullMana()
+                    && supportHero.getHeroMana(supportHero) <= 3
+                    && matchSupportGem != null)
+                {
+                    return false;
+                }
+                else if (subAttackHero.isAlive() && subAttackHero.isFullMana()
+                    && (supportHero.getHeroMana(supportHero) > 3
+                    || matchSupportGem == null))
+                {
+                    TaskSchedule(delaySwapGem, _ => SendCastSkill(subAttackHero));
+                    return true;
+                }
+            }
 
 
+
+            return false;
         }
 
         protected bool isBotTurn()
         {
             return botPlayer.playerId == currentPlayerId;
         }
+
     }
 }

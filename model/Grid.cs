@@ -66,7 +66,7 @@ namespace bot
             return listMatchGem[0].getIndexSwapGem();
         }
 
-        private List<GemSwapInfo> suggestMatch()
+        public List<GemSwapInfo> suggestMatch()
         {
             var listMatchGem = new List<GemSwapInfo>();
 

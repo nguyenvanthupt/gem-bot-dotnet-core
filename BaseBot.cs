@@ -6,6 +6,9 @@ using Sfs2X.Requests;
 using Sfs2X.Entities;
 using Timer = System.Threading.Timer;
 using Player = bot.Player;
+using Newtonsoft.Json;
+using System.Text;
+using gem_bot_csharp.model;
 
 namespace bot
 {
@@ -14,9 +17,9 @@ namespace bot
         private SmartFox sfs;
         private const string IP = "172.16.100.112";
         // private const string IP = "10.10.10.18";
-        private const string username = "trung.hoangdinh";
-
-        private const string token = "bot";
+        private const string username = "thu.nguyenvan";
+        private const string password = "123456";
+        private string token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ4dWFuLnZ1ZHV5IiwiYXV0aCI6IlJPTEVfVVNFUiIsIkxBU1RfTE9HSU5fVElNRSI6MTY1MzEyNzE5ODI5MSwiZXhwIjoxNjU0OTI3MTk4fQ.LSEVhIP-T4TemhgoCMX5MCgWIqoJYyCcq62BkVM7sqKwtowpZVob1us4tF9Gn6DAx24KKz7QRticiwQth0wJog";
 
         private const int TIME_INTERVAL_IN_MILLISECONDS = 1000;
         private const int ENEMY_PLAYER_ID = 0;
@@ -34,9 +37,11 @@ namespace bot
         protected int currentPlayerId;
         protected Grid grid;
 
-        public void Start()
+        public async void Start()
         {
             Console.WriteLine("Connecting to Game-Server at " + IP);
+
+            await getTokenAsync();
 
             _timer = new Timer(Tick, null, TIME_INTERVAL_IN_MILLISECONDS, Timeout.Infinite);
 
@@ -163,11 +168,45 @@ namespace bot
         private void OnConnection(BaseEvent evt)
         {
             Console.WriteLine("Smartfox connection state: " + (bool)evt.Params["success"]);
+
             SFSObject parameters = new SFSObject();
             parameters.PutUtfString("BATTLE_MODE", "NORMAL");
             parameters.PutUtfString("ID_TOKEN", token);
             parameters.PutUtfString("NICK_NAME", username);
+
+
             sfs.Send(new LoginRequest(username, "", "gmm", parameters));
+        }
+
+        private async Task getTokenAsync()
+        {
+            using (HttpClient httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Clear();
+                httpClient.BaseAddress = new Uri("http://172.16.100.112:8081/");
+                HttpResponseMessage httpResponse = new HttpResponseMessage();
+                try
+                {
+                    var contentString = new StringContent(JsonConvert.SerializeObject(new { username = username, password = password }), Encoding.UTF8, "application/json");
+
+                    httpResponse = await httpClient.PostAsync("api/v1/user/authenticate", contentString);
+                    if (httpResponse.IsSuccessStatusCode)
+                    {
+                        var responseContent = await httpResponse.Content.ReadAsStringAsync();
+                        var result = JsonConvert.DeserializeObject<IdToken>(responseContent);
+                        if (result != null)
+                        {
+                            token = result.Id_token;
+                        }
+
+                        //logger.LogInformation($"PostAsync() response:StatusCode= {httpResponse.StatusCode}, Content={responseContent}");
+                    }
+                }
+                catch (Exception ex)
+                {
+
+                }
+            };
         }
 
         private void OnConnectionLost(BaseEvent evt)
@@ -251,16 +290,55 @@ namespace bot
 
         public void SendCastSkill(Hero heroCastSkill)
         {
-            var data = new SFSObject();
+            var enemyCES = enemyPlayer.GetHeroByID(HeroIdEnum.CERBERUS);
+            var enemyFate = enemyPlayer.GetHeroByID(HeroIdEnum.DISPATER);
+            var enemyZeus = enemyPlayer.GetHeroByID(HeroIdEnum.THUNDER_GOD);
+            var enemybuffalow = enemyPlayer.GetHeroByID(HeroIdEnum.SEA_GOD);
+            var enemySpirit = enemyPlayer.GetHeroByID(HeroIdEnum.AIR_SPIRIT);
+            var enemyFireSpirit = enemyPlayer.GetHeroByID(HeroIdEnum.FIRE_SPIRIT);
 
+
+            var data = new SFSObject();
+            Console.WriteLine("dang cast:" + heroCastSkill.id);
             data.PutUtfString("casterId", heroCastSkill.id.ToString());
-            if (heroCastSkill.isHeroSelfSkill())
+            if (heroCastSkill.isHeroSelfSkill() || heroCastSkill.id == HeroIdEnum.MONK)
             {
                 data.PutUtfString("targetId", botPlayer.firstHeroAlive().id.ToString());
             }
+
+            bool isFireSpirit = false;
+            if (heroCastSkill.id == HeroIdEnum.FIRE_SPIRIT)
+            {
+                isFireSpirit = true;
+            }
+
+            if (isFireSpirit && enemyCES != null && enemyCES.isAlive())
+            {
+                data.PutUtfString("targetId", enemyCES.id.ToString());
+            }
+            else if (isFireSpirit && enemyZeus != null && enemyZeus.isAlive())
+            {
+                data.PutUtfString("targetId", enemyZeus.id.ToString());
+            }
+            else if (isFireSpirit && enemybuffalow != null && enemybuffalow.isAlive())
+            {
+                data.PutUtfString("targetId", enemybuffalow.id.ToString());
+            }
+            else if (isFireSpirit && enemyFireSpirit != null && enemyFireSpirit.isAlive())
+            {
+                data.PutUtfString("targetId", enemyFireSpirit.id.ToString());
+            }
+            else if (isFireSpirit && enemyFate != null && enemyFate.isAlive())
+            {
+                data.PutUtfString("targetId", enemyFate.id.ToString());
+            }
+            else if (isFireSpirit && enemySpirit != null && enemySpirit.isAlive())
+            {
+                data.PutUtfString("targetId", enemySpirit.id.ToString());
+            }
             else
             {
-                data.PutUtfString("targetId", enemyPlayer.firstHeroAlive().id.ToString());
+                data.PutUtfString("targetId", enemyPlayer.highgestAttackEnemyHero().id.ToString());
             }
 
             data.PutUtfString("selectedGem", selectGem().ToString());
